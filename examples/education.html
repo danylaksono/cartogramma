@@ -104,7 +104,7 @@
       import { Cartogram } from "../src/cartogram.js";
       import { drawBarChart } from "../src/glyphs/bar.js";
       import { drawSplitBarChart } from "../src/glyphs/split-bar.js";
-      import { loadCSV } from "../src/utils/data-loader.js";
+      import { loadCSV, parseCSV } from "../src/utils/data-loader.js";
 
       // Tab switching logic
       document.querySelectorAll(".tab-button").forEach((button) => {
@@ -126,13 +126,17 @@
       document.addEventListener("DOMContentLoaded", async () => {
         try {
           // Load shared data
-          const gridData = await loadCSV("../data/indonesia-grid.csv");
-          const educationData = await loadCSV(
+          const gridDataCSV = await loadCSV("../data/indonesia-grid.csv");
+          const educationDataCSV = await loadCSV(
             "../data/indonesia-education.csv"
           );
-          const populationData = await loadCSV(
+          const populationDataCSV = await loadCSV(
             "../data/indonesia-population-updated.csv"
           );
+
+          const gridData = parseCSV(gridDataCSV);
+          const educationData = parseCSV(educationDataCSV);
+          const populationData = parseCSV(populationDataCSV);
 
           // Merge education and population data for complete visualization
           const mergedData = educationData.map((educItem) => {
@@ -158,8 +162,8 @@
             animationDuration: 500,
           });
 
-          await literacyCartogram.loadGridData(gridData);
-          await literacyCartogram.loadChartData(mergedData);
+          await literacyCartogram.loadGridData(gridDataCSV);
+          await literacyCartogram.loadChartData(educationDataCSV); // Pass CSV string
 
           literacyCartogram.setCustomGlyphFunction(drawBarChart, {
             metrics: ["LiteracyRate"],
@@ -184,8 +188,8 @@
             animationDuration: 500,
           });
 
-          await genderCartogram.loadGridData(gridData);
-          await genderCartogram.loadChartData(mergedData);
+          await genderCartogram.loadGridData(gridDataCSV);
+          await genderCartogram.loadChartData(educationDataCSV); // Pass CSV string
 
           genderCartogram.setCustomGlyphFunction(drawSplitBarChart, {
             leftMetric: "MaleLiteracy",
@@ -215,8 +219,8 @@
             animationDuration: 500,
           });
 
-          await higherEdCartogram.loadGridData(gridData);
-          await higherEdCartogram.loadChartData(mergedData);
+          await higherEdCartogram.loadGridData(gridDataCSV);
+          await higherEdCartogram.loadChartData(educationDataCSV); // Pass CSV string
 
           higherEdCartogram.setCustomGlyphFunction(drawBarChart, {
             metrics: ["HigherEd"],
