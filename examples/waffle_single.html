@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Indonesia Cartogram (SVG)</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Basic styling for the SVG container */
+        #cartogram-svg-container {
+            display: flex; /* Use flexbox for layout */
+            flex-direction: column; /* Stack elements vertically */
+            align-items: center; /* Center items horizontally */
+            font-family: 'Inter', sans-serif; /* Use Inter font */
+            padding: 20px;
+            background-color: #f0f4f8; /* Light background for the page */
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Styling for the SVG element itself */
+        #cartogram {
+            border: 1px solid #ccc;
+            background-color: white; /* White background for the SVG */
+            border-radius: 8px; /* Rounded corners for the SVG */
+            display: block; /* Ensure SVG takes block display */
+            margin-bottom: 15px; /* Space below the SVG */
+        }
+
+        /* Styling for the tooltip */
+        #tooltip {
+            position: absolute; /* Position absolutely relative to the body */
+            background: rgba(0, 0, 0, 0.85); /* Darker background */
+            color: white;
+            padding: 8px 12px; /* Slightly larger padding */
+            border-radius: 6px; /* Smoother corners */
+            pointer-events: none; /* Tooltip should not interfere with mouse events */
+            display: none; /* Hidden by default */
+            font-family: Arial, sans-serif;
+            font-size: 13px; /* Slightly larger font */
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2); /* Add shadow to tooltip */
+            white-space: nowrap; /* Prevent text wrapping */
+            z-index: 10; /* Ensure tooltip is above other elements */
+        }
+
+        /* Styling for the grid cells (rectangles) */
+        .grid-cell {
+            stroke-width: 1; /* Border width */
+            transition: fill 0.2s ease-in-out; /* Smooth transition for hover */
+        }
+
+        /* Styling for the province labels */
+        .province-label {
+            font-size: 10px; /* Smaller font for labels */
+            fill: #333; /* Dark grey color for text */
+            text-anchor: middle; /* Center text horizontally */
+            /* dominant-baseline removed - let JS control this via attributes */
+            pointer-events: none; /* Labels should not block mouse events */
+            font-weight: 500; /* Medium font weight */
+        }
+
+        /* Styling for the legend text */
+        .legend-text {
+            font-size: 12px;
+            fill: #333;
+        }
+
+        /* Styling for the export button (using Tailwind classes in HTML) */
+        #export-button {
+             margin-top: 10px;
+        }
+
+    </style>
+     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div id="cartogram-svg-container">
+        <svg id="cartogram" width="1200" height="1000"></svg>
+        <button id="export-button" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg shadow transition duration-150 ease-in-out">
+            Export as SVG
+        </button>
+    </div>
+    <div id="tooltip"></div>
+
+    <script>
+        class CartogramSVG {
+            constructor({
+                svgId,
+                width = 1200,
+                height = 1000,
+                margin = { top: 40, right: 40, bottom: 40, left: 40 }, // Keep margin
+                gridPadding = 3,
+                labelFont = '10px Inter, sans-serif',
+                labelPosition = 'bottom', // Default to bottom as requested
+                defaultFill = '#e0e0e0',
+                hoverFill = '#ffd700',
+                borderColor = '#666',
+                borderRadius = 4,
+                shadow = false, // Defaulting shadow/gradient to false for clarity
+                backgroundGradient = false,
+                showLegend = true,
+                legendPosition = 'top-right',
+                exportButtonId = 'export-button'
+            }) {
+                // Select the SVG element using D3
+                this.svg = d3.select(`#${svgId}`);
+                if (this.svg.empty()) throw new Error('SVG element not found');
+
+                this.width = width;
+                this.height = height;
+                this.margin = margin;
+                this.gridPadding = gridPadding;
+                this.labelFont = labelFont;
+                // Ensure the passed labelPosition is valid, otherwise default to 'bottom'
+                this.labelPosition = ['top', 'bottom', 'left', 'right', 'center'].includes(labelPosition) ? labelPosition : 'bottom';
+                this.defaultFill = defaultFill;
+                this.hoverFill = hoverFill;
+                this.borderColor = borderColor;
+                this.borderRadius = borderRadius;
+                this.shadow = shadow;
+                this.backgroundGradient = backgroundGradient;
+                this.showLegend = showLegend;
+                this.legendPosition = ['top-left', 'top-right', 'bottom-left', 'bottom-right'].includes(legendPosition) ? legendPosition : 'top-right';
+
+                // Data storage
+                this.gridData = [];
+                this.chartData = null;
+                this.gridSize = 0;
+                this.maxRow = 0;
+                this.maxCol = 0;
+                this.gridMap = new Map();
+                this.provinceMap = new Map();
+
+                // Tooltip selection
+                this.tooltip = d3.select('#tooltip');
+                if (this.tooltip.empty()) {
+                    this.tooltip = d3.select('body').append('div')
+                        .attr('id', 'tooltip')
+                        .style('display', 'none');
+                }
+
+                // D3 selections for SVG groups
+                this.plotArea = this.svg.append('g')
+                    .attr('transform', `translate(${this.margin.left}, ${this.margin.top})`);
+                this.defs = this.svg.append('defs');
+
+                // Custom glyph function placeholder
+                this.customGlyphFunction = null;
+
+                // Export button setup
+                this.exportButton = d3.select(`#${exportButtonId}`);
+                if (!this.exportButton.empty()) {
+                    this.exportButton.on('click', () => this.exportSVG());
+                } else {
+                    console.warn('Export button element not found');
+                }
+
+                 // Add background gradient if enabled
+                if (this.backgroundGradient) {
+                    const gradient = this.defs.append('linearGradient')
+                        .attr('id', 'backgroundGradient')
+                        .attr('x1', '0%').attr('y1', '0%')
+                        .attr('x2', '0%').attr('y2', '100%');
+                    gradient.append('stop').attr('offset', '0%').attr('stop-color', '#f5f7fa');
+                    gradient.append('stop').attr('offset', '100%').attr('stop-color', '#c3cfe2');
+
+                    this.svg.insert('rect', ':first-child')
+                        .attr('width', this.width)
+                        .attr('height', this.height)
+                        .attr('fill', 'url(#backgroundGradient)');
+                }
+
+                // Add shadow filter if enabled
+                if (this.shadow) {
+                    const filter = this.defs.append('filter')
+                        .attr('id', 'drop-shadow')
+                        .attr('height', '130%');
+
+                    filter.append('feGaussianBlur')
+                        .attr('in', 'SourceAlpha')
+                        .attr('stdDeviation', 2)
+                        .attr('result', 'blur');
+
+                    filter.append('feOffset')
+                        .attr('in', 'blur')
+                        .attr('dx', 2)
+                        .attr('dy', 2)
+                        .attr('result', 'offsetBlur');
+
+                    const feMerge = filter.append('feMerge');
+                    feMerge.append('feMergeNode').attr('in', 'offsetBlur');
+                    feMerge.append('feMergeNode').attr('in', 'SourceGraphic');
+                }
+            }
+
+            // Load and validate cartogram grid CSV data
+            async loadGridData(csvText) {
+                try {
+                    const data = d3.csvParse(csvText);
+                    if (!data.length || !data.every(d => 'Provinsi' in d && 'row' in d && 'col' in d)) {
+                        throw new Error('Grid CSV must contain Provinsi, row, and col columns');
+                    }
+
+                    this.gridData = data.map(d => ({
+                        province: d.Provinsi.trim(),
+                        row: parseInt(d.row),
+                        col: parseInt(d.col)
+                    }));
+
+                    this.gridMap.clear();
+                    this.provinceMap.clear();
+
+                    this.gridData.forEach(d => {
+                        if (isNaN(d.row) || isNaN(d.col) || d.row < 1 || d.col < 1) {
+                            throw new Error(`Invalid row or col for ${d.province}`);
+                        }
+                        const key = `${d.row}-${d.col}`;
+                        if (this.gridMap.has(key)) {
+                            throw new Error(`Duplicate grid position at row ${d.row}, col ${d.col}`);
+                        }
+                        if (this.provinceMap.has(d.province)) {
+                             throw new Error(`Duplicate province name: ${d.province}`);
+                        }
+                        this.gridMap.set(key, d);
+                        this.provinceMap.set(d.province, d);
+                    });
+
+                    this.maxRow = d3.max(this.gridData, d => d.row);
+                    this.maxCol = d3.max(this.gridData, d => d.col);
+
+                    const plotWidth = this.width - this.margin.left - this.margin.right;
+                    // Adjust plot height calculation to potentially reserve space for bottom labels
+                    // We need to estimate the maximum label height. Let's assume 1 line for now.
+                    const labelHeightApproximation = 15; // Approx height needed for one line of label below cell
+                    const effectivePlotHeight = this.height - this.margin.top - this.margin.bottom - labelHeightApproximation;
+
+                    const sizeX = (plotWidth - (this.maxCol - 1) * this.gridPadding) / this.maxCol;
+                    const sizeY = (effectivePlotHeight - (this.maxRow - 1) * this.gridPadding) / this.maxRow;
+                    this.gridSize = Math.max(1, Math.floor(Math.min(sizeX, sizeY)));
+
+                    console.log(`Calculated grid size: ${this.gridSize}`);
+                    if (this.gridSize <= 0) {
+                         throw new Error("Calculated grid size is zero or negative. Check dimensions and margins.");
+                    }
+
+                } catch (error) {
+                    console.error('Error loading grid data:', error);
+                    throw error;
+                }
+            }
+
+            // Load optional chart data CSV
+            async loadChartData(csvText) {
+                try {
+                    const data = d3.csvParse(csvText);
+                     if (!data.length || !data.every(d => 'Provinsi' in d)) {
+                        throw new Error('Chart CSV must contain Provinsi column');
+                    }
+                    this.chartData = new Map(data.map(d => [d.Provinsi.trim(), d]));
+
+                    this.gridData.forEach(gridItem => {
+                        if (!this.chartData.has(gridItem.province)) {
+                            console.warn(`No chart data found for province: ${gridItem.province}`);
+                        }
+                    });
+
+                } catch (error) {
+                    console.error('Error loading chart data:', error);
+                    throw error;
+                }
+            }
+
+            // Set the custom glyph drawing function
+            setCustomGlyphFunction(fn) {
+                this.customGlyphFunction = fn;
+            }
+
+            // Draw the cartogram using SVG
+            draw() {
+                if (!this.gridData.length) {
+                    console.warn('No grid data to draw');
+                    return;
+                }
+                 if (!this.gridSize || this.gridSize <= 0) {
+                    console.error("Grid size is invalid. Cannot draw.");
+                    return;
+                }
+
+                // Clear previous drawing
+                this.plotArea.selectAll('*').remove();
+
+                // Create groups for each grid cell (province)
+                const cellGroups = this.plotArea.selectAll('.cell-group')
+                    .data(this.gridData, d => d.province)
+                    .join('g')
+                    .attr('class', 'cell-group')
+                    .attr('transform', d => `translate(${ (d.col - 1) * (this.gridSize + this.gridPadding)}, ${(d.row - 1) * (this.gridSize + this.gridPadding)})`)
+                    .style('filter', this.shadow ? 'url(#drop-shadow)' : null)
+                    .on('mouseover', (event, d) => {
+                        d3.select(event.currentTarget).select('.grid-cell').attr('fill', this.hoverFill);
+                        let tooltipContent = `<strong>${d.province}</strong>`;
+                        if (this.chartData && this.chartData.has(d.province)) {
+                            const data = this.chartData.get(d.province);
+                            Object.entries(data).forEach(([key, value]) => {
+                                if (key !== 'Provinsi') {
+                                    tooltipContent += `<br>${key}: ${value || 'N/A'}`;
+                                }
+                            });
+                        } else {
+                             tooltipContent += '<br>No additional data';
+                        }
+                        this.tooltip
+                            .style('display', 'block')
+                            .html(tooltipContent)
+                            .style('left', `${event.pageX + 10}px`)
+                            .style('top', `${event.pageY + 10}px`);
+                    })
+                    .on('mousemove', (event) => {
+                        this.tooltip
+                            .style('left', `${event.pageX + 10}px`)
+                            .style('top', `${event.pageY + 10}px`);
+                    })
+                    .on('mouseout', (event, d) => {
+                        d3.select(event.currentTarget).select('.grid-cell').attr('fill', this.defaultFill);
+                        this.tooltip.style('display', 'none');
+                    })
+                    .on('click', (event, d) => {
+                        console.log(`Clicked on ${d.province}`);
+                    });
+
+                // Add the background rectangle for each cell
+                cellGroups.append('rect')
+                    .attr('class', 'grid-cell')
+                    .attr('x', 0)
+                    .attr('y', 0)
+                    .attr('width', this.gridSize)
+                    .attr('height', this.gridSize)
+                    .attr('fill', this.defaultFill)
+                    .attr('stroke', this.borderColor)
+                    .attr('rx', this.borderRadius)
+                    .attr('ry', this.borderRadius);
+
+                // Draw custom glyphs if a function is provided and chart data exists
+                if (this.customGlyphFunction && this.chartData) {
+                    cellGroups.each((d, i, nodes) => {
+                        const group = d3.select(nodes[i]);
+                        const chartDatum = this.chartData.get(d.province);
+                        if (chartDatum) {
+                            const glyphGroup = group.append('g').attr('class', 'glyph-group');
+                            const bounds = { x: 0, y: 0, width: this.gridSize, height: this.gridSize };
+                            this.customGlyphFunction(glyphGroup, bounds, chartDatum);
+                        }
+                    });
+                }
+
+                // Add province labels
+                cellGroups.append('text')
+                    .attr('class', 'province-label')
+                    .attr('font-family', this.labelFont.split(' ')[1] || 'sans-serif')
+                    .attr('font-size', this.labelFont.split(' ')[0] || '10px')
+                    .text(d => d.province)
+                    .each((d, i, nodes) => {
+                        const textElement = d3.select(nodes[i]);
+                        // Get approximate text dimensions *after* setting content
+                        const bbox = textElement.node().getBBox();
+                        let textX, textY;
+                        let dominantBaseline = 'middle'; // Default baseline
+                        let textAnchor = 'middle'; // Default anchor
+
+                        // --- Calculate Position based on labelPosition ---
+                        switch (this.labelPosition) {
+                            case 'top':
+                                textX = this.gridSize / 2;
+                                textY = -6; // Position above the cell (adjusted offset)
+                                dominantBaseline = 'alphabetic'; // Baseline for positioning above
+                                break;
+                            case 'bottom':
+                                textX = this.gridSize / 2;
+                                textY = this.gridSize + 14; // Position below the cell (increased offset)
+                                dominantBaseline = 'hanging'; // Baseline for positioning below
+                                break;
+                            case 'left':
+                                textX = -6; // Position left of the cell (adjusted offset)
+                                textY = this.gridSize / 2;
+                                textAnchor = 'end'; // Anchor text end to the position
+                                break;
+                            case 'right':
+                                textX = this.gridSize + 6; // Position right of the cell (adjusted offset)
+                                textY = this.gridSize / 2;
+                                textAnchor = 'start'; // Anchor text start to the position
+                                break;
+                            case 'center':
+                            default: // Default to center
+                                textX = this.gridSize / 2;
+                                textY = this.gridSize / 2;
+                                dominantBaseline = 'middle';
+                                break;
+                        }
+
+                        // Set common attributes first
+                        textElement
+                            .attr('text-anchor', textAnchor)
+                            .attr('dominant-baseline', dominantBaseline);
+
+
+                        // --- Apply Wrapping Logic (generalized) ---
+                        // Define max width based on position (allow more width if outside cell)
+                        const maxLabelWidth = (this.labelPosition === 'center')
+                            ? this.gridSize * 0.9 // Inside cell: restrict width more
+                            : this.gridSize * 1.5; // Outside cell: allow more width
+
+                        if (bbox.width > maxLabelWidth) {
+                             const words = d.province.split(/\s+/).reverse();
+                             let word;
+                             let line = [];
+                             let lineNumber = 0;
+                             const lineHeight = 1.1; // ems
+                             const initialDy = (this.labelPosition === 'center' || this.labelPosition === 'left' || this.labelPosition === 'right') ? 0.35 : 0; // Adjust initial dy for vertical centering if needed
+                             textElement.text(null); // Clear existing text
+
+                             // Create first tspan
+                             let tspan = textElement.append("tspan")
+                                .attr("x", textX)
+                                .attr("dy", initialDy + "em"); // Apply initial dy
+
+                             while (word = words.pop()) {
+                                line.push(word);
+                                tspan.text(line.join(" "));
+                                // Check computed length after setting text
+                                if (tspan.node().getComputedTextLength() > maxLabelWidth && line.length > 1) {
+                                    line.pop(); // remove the word that broke the limit
+                                    tspan.text(line.join(" ")); // Set text for the completed line
+                                    line = [word]; // Start new line with the current word
+                                    // Create new tspan for the next line
+                                    tspan = textElement.append("tspan")
+                                        .attr("x", textX) // Reset x for the new line
+                                        .attr("dy", lineHeight + "em") // Set dy relative to previous line
+                                        .text(word);
+                                    lineNumber++;
+                                }
+                             }
+                             // Apply final position, considering potential vertical shift from wrapping
+                             // Adjust Y based on number of lines and position
+                             let yShift = 0;
+                             if (lineNumber > 0) {
+                                 const approxLineHeightPx = parseFloat(this.labelFont.split(' ')[0] || '10') * lineHeight;
+                                 if (this.labelPosition === 'center' || this.labelPosition === 'left' || this.labelPosition === 'right') {
+                                     yShift = - (lineNumber * approxLineHeightPx) / 2; // Shift up to re-center vertically
+                                 }
+                                 // No yShift needed for top/bottom as baseline handles it
+                             }
+                             textElement.attr('y', textY).attr('transform', `translate(0, ${yShift})`);
+
+                        } else {
+                             // If no wrapping needed, just set x and y
+                             textElement.attr('x', textX).attr('y', textY);
+                        }
+                    });
+
+                // Draw legend if enabled and applicable
+                if (this.showLegend && this.customGlyphFunction === drawWaffleChartSVG) {
+                    this.drawLegend();
+                }
+            }
+
+            // Draw the legend using SVG elements
+            drawLegend() {
+                const legendItems = [
+                    { label: 'Male', color: '#1f77b4' },
+                    { label: 'Female', color: '#ff7f0e' }
+                ];
+                const legendItemHeight = 20;
+                const legendWidth = 120;
+                const legendPadding = 10;
+                const legendHeight = legendItems.length * legendItemHeight + legendPadding * 2;
+                let legendX, legendY;
+
+                 switch (this.legendPosition) {
+                    case 'top-left':
+                        legendX = this.margin.left;
+                        legendY = this.margin.top;
+                        break;
+                    case 'bottom-left':
+                        legendX = this.margin.left;
+                        legendY = this.height - this.margin.bottom - legendHeight;
+                        break;
+                    case 'bottom-right':
+                        legendX = this.width - this.margin.right - legendWidth;
+                        legendY = this.height - this.margin.bottom - legendHeight;
+                        break;
+                    case 'top-right':
+                    default:
+                        legendX = this.width - this.margin.right - legendWidth;
+                        legendY = this.margin.top;
+                        break;
+                }
+
+                this.svg.select('.legend-group').remove();
+
+                const legendGroup = this.svg.append('g')
+                    .attr('class', 'legend-group')
+                    .attr('transform', `translate(${legendX}, ${legendY})`);
+
+                legendGroup.append('rect')
+                    .attr('width', legendWidth)
+                    .attr('height', legendHeight)
+                    .attr('fill', 'rgba(255, 255, 255, 0.9)')
+                    .attr('stroke', '#ccc')
+                    .attr('rx', 5)
+                    .attr('ry', 5);
+
+                const items = legendGroup.selectAll('.legend-item')
+                    .data(legendItems)
+                    .join('g')
+                    .attr('class', 'legend-item')
+                    .attr('transform', (d, i) => `translate(${legendPadding}, ${legendPadding + i * legendItemHeight})`);
+
+                items.append('rect')
+                    .attr('width', 15)
+                    .attr('height', 15)
+                    .attr('fill', d => d.color);
+
+                items.append('text')
+                    .attr('class', 'legend-text')
+                    .attr('x', 20)
+                    .attr('y', 12)
+                    .text(d => d.label);
+            }
+
+             // Export the SVG content as a file
+            exportSVG() {
+                try {
+                    const svgNode = this.svg.node();
+                    const serializer = new XMLSerializer();
+                    let svgString = serializer.serializeToString(svgNode);
+
+                    const styles = document.querySelectorAll('style');
+                    let styleDefs = '';
+                    styles.forEach(style => {
+                       styleDefs += style.innerHTML;
+                    });
+
+                    if (styleDefs) {
+                        // Ensure style tag is properly placed within defs
+                         if (svgString.includes('<defs>')) {
+                            svgString = svgString.replace('</defs>', `<style type="text/css"><![CDATA[${styleDefs}]]></style></defs>`);
+                         } else {
+                             // Add defs if they don't exist
+                             svgString = svgString.replace('<svg ', '<svg xmlns="http://www.w3.org/2000/svg" ') // Ensure namespace
+                                                 .replace('>', `><defs><style type="text/css"><![CDATA[${styleDefs}]]></style></defs>`);
+                         }
+                    }
+
+                    svgString = '<?xml version="1.0" standalone="no"?>\r\n' + svgString;
+
+                    const blob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+                    const link = document.createElement('a');
+                    link.href = URL.createObjectURL(blob);
+                    link.download = 'indonesia_cartogram.svg';
+
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    URL.revokeObjectURL(link.href);
+
+                    console.log('SVG exported successfully.');
+
+                } catch (error) {
+                    console.error('Error exporting SVG:', error);
+                    alert('Failed to export SVG. See console for details.');
+                }
+            }
+        }
+
+        // Example custom glyph function for waffle chart (SVG version)
+        function drawWaffleChartSVG(group, bounds, data) {
+            const { x, y, width, height } = bounds;
+            const male = parseInt(data.Male) || 0;
+            const female = parseInt(data.Female) || 0;
+            const total = male + female;
+            if (total === 0) return;
+
+            const gridCount = 10;
+            const availableSize = Math.min(width, height) * 0.9; // Use 90%
+            const cellSize = Math.max(1, Math.floor(availableSize / gridCount)); // Ensure positive size
+            const cellPadding = cellSize > 2 ? 1 : 0; // Add padding only if cells are large enough
+            const totalWaffleSize = cellSize * gridCount;
+            const startX = x + (width - totalWaffleSize) / 2;
+            const startY = y + (height - totalWaffleSize) / 2;
+
+            const maleRatio = male / total;
+            const maleCells = Math.round(maleRatio * gridCount * gridCount);
+
+            let cellIndex = 0;
+            const waffleData = [];
+            for (let r = 0; r < gridCount; r++) {
+                for (let c = 0; c < gridCount; c++) {
+                    waffleData.push({
+                        cellX: startX + c * cellSize,
+                        cellY: startY + r * cellSize,
+                        color: cellIndex < maleCells ? '#1f77b4' : '#ff7f0e'
+                    });
+                    cellIndex++;
+                }
+            }
+
+            group.selectAll('.waffle-cell')
+                .data(waffleData)
+                .join('rect')
+                .attr('class', 'waffle-cell')
+                .attr('x', d => d.cellX)
+                .attr('y', d => d.cellY)
+                .attr('width', Math.max(0, cellSize - cellPadding)) // Ensure non-negative width/height
+                .attr('height', Math.max(0, cellSize - cellPadding))
+                .attr('fill', d => d.color)
+                .attr('stroke', 'none');
+        }
+
+
+        // --- Data (Same as before) ---
+        const gridCsv = `Provinsi,row,col
+Aceh,1,1
+Kalimantan Utara,2,5
+Gorontalo,2,8
+Sumatera Utara,2,1
+Riau,2,2
+Sulawesi Utara,2,9
+Kepulauan Riau,2,3
+Sulawesi Tengah,3,8
+Kalimantan Timur,3,5
+Kalimantan Barat,3,4
+Jambi,3,2
+Sumatera Barat,3,1
+Papua Barat Daya,3,12
+Papua,4,13
+Sulawesi Barat,4,7
+Kalimantan Tengah,4,4
+Kalimantan Selatan,4,5
+Bengkulu,4,1
+Kepulauan Bangka Belitung,4,2
+Sulawesi Tenggara,4,8
+Maluku Utara,4,10
+Papua Barat,4,12
+Papua Tengah,5,12
+Papua Pegunungan,5,13
+Maluku,5,10
+Sulawesi Selatan,5,7
+Sumatera Selatan,5,1
+Lampung,5,2
+Papua Selatan,6,13
+Banten,6,3
+Jawa Tengah,6,5
+Daerah Khusus Ibukota Jakarta,6,4
+Jawa Timur,6,6
+Jawa Barat,7,4
+Daerah Istimewa Yogyakarta,7,5
+Bali,7,7
+Nusa Tenggara Barat,7,8
+Nusa Tenggara Timur,7,9`;
+
+        const chartCsv = `Provinsi,Population,Male,Female
+Aceh,5300000,2650000,2650000
+Kalimantan Utara,700000,350000,350000
+Gorontalo,1200000,600000,600000
+Sumatera Utara,15000000,7500000,7500000
+Riau,6400000,3200000,3200000
+Sulawesi Utara,2600000,1300000,1300000
+Kepulauan Riau,2100000,1050000,1050000
+Sulawesi Tengah,3000000,1500000,1500000
+Kalimantan Timur,3800000,1900000,1900000
+Kalimantan Barat,5500000,2750000,2750000
+Jambi,3600000,1800000,1800000
+Sumatera Barat,5600000,2800000,2800000
+Papua Barat Daya,600000,300000,300000
+Papua,4300000,2150000,2150000
+Sulawesi Barat,1500000,750000,750000
+Kalimantan Tengah,2700000,1350000,1350000
+Kalimantan Selatan,4100000,2050000,2050000
+Bengkulu,2000000,1000000,1000000
+Kepulauan Bangka Belitung,1500000,750000,750000
+Sulawesi Tenggara,2700000,1350000,1350000
+Maluku Utara,1300000,650000,650000
+Papua Barat,1300000,650000,650000
+Papua Tengah,1700000,850000,850000
+Papua Pegunungan,1600000,800000,800000
+Maluku,1900000,950000,950000
+Sulawesi Selatan,9100000,4550000,4550000
+Sumatera Selatan,8500000,4250000,4250000
+Lampung,9100000,4550000,4550000
+Papua Selatan,1100000,550000,550000
+Banten,13000000,6500000,6500000
+Jawa Tengah,37000000,18500000,18500000
+Daerah Khusus Ibukota Jakarta,11000000,5500000,5500000
+Jawa Timur,41000000,20500000,20500000
+Jawa Barat,49000000,24500000,24500000
+Daerah Istimewa Yogyakarta,3900000,1950000,1950000
+Bali,4300000,2150000,2150000
+Nusa Tenggara Barat,5500000,2750000,2750000
+Nusa Tenggara Timur,5400000,2700000,2700000`;
+
+        // --- Initialization ---
+        async function init() {
+            try {
+                const cartogram = new CartogramSVG({
+                    svgId: 'cartogram',
+                    labelPosition: 'bottom', // Ensure this is set to 'bottom'
+                    showLegend: true,
+                    legendPosition: 'bottom-right',
+                    borderRadius: 5,
+                    shadow: false, // Disabled shadow for testing clarity
+                    backgroundGradient: false, // Disabled gradient for testing clarity
+                    exportButtonId: 'export-button'
+                });
+
+                await cartogram.loadGridData(gridCsv);
+                await cartogram.loadChartData(chartCsv);
+                cartogram.setCustomGlyphFunction(drawWaffleChartSVG);
+                cartogram.draw();
+
+            } catch (error) {
+                console.error("Initialization failed:", error);
+                 const container = document.getElementById('cartogram-svg-container');
+                 if (container) {
+                    container.innerHTML = `<p style="color: red; text-align: center;">Error initializing cartogram: ${error.message}. Please check the console for details.</p>`;
+                 }
+            }
+        }
+
+        // Run initialization when the DOM is ready
+        document.addEventListener('DOMContentLoaded', init);
+
+    </script>
+</body>
+</html>

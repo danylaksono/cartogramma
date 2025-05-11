@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Population Pyramid Example | Cartogram Visualization</title>
+    <link rel="stylesheet" href="../css/cartogram.css">
+    <link rel="stylesheet" href="../css/examples.css">
+</head>
+<body>
+    <header>
+        <h1>Population Pyramid Example</h1>
+        <nav>
+            <ul>
+                <li><a href="../index.html">Home</a></li>
+                <li><a href="waffle.html">Waffle Chart</a></li>
+                <li><a href="pie.html">Pie Chart</a></li>
+            </ul>
+        </nav>
+    </header>
+    
+    <main>
+        <div class="example-description">
+            <h2>Population Pyramid Visualization</h2>
+            <p>
+                This example shows the cartogram with population pyramids for each region.
+                Each pyramid shows the male population (left) and female population (right)
+                as horizontal bars.
+            </p>
+        </div>
+        
+        <div class="cartogram-container">
+            <button class="export-button">Export as PNG</button>
+            <svg class="cartogram-svg"></svg>
+            <div class="tooltip"></div>
+        </div>
+    </main>
+
+    <footer>
+        <p>Cartogram Visualization Library &copy; 2025</p>
+    </footer>
+
+    <script type="module">
+        import { Cartogram } from '../src/cartogram.js';
+        import { drawPopulationPyramid } from '../src/glyphs/pyramid.js';
+        import { loadCSV } from '../src/utils/data-loader.js';
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                const gridData = await loadCSV('../data/indonesia-grid.csv');
+                const chartData = await loadCSV('../data/indonesia-population.csv');
+                
+                const cartogram = new Cartogram({
+                    containerSelector: '.cartogram-container',
+                    labelPosition: 'top',
+                    showLegend: true,
+                    legendPosition: 'top-right',
+                    gridLabelColumn: 'Provinsi',
+                    chartLabelColumn: 'Provinsi',
+                    animationDuration: 500
+                });
+
+                await cartogram.loadGridData(gridData);
+                await cartogram.loadChartData(chartData);
+
+                cartogram.setCustomGlyphFunction(drawPopulationPyramid, {
+                    maleColor: '#1f77b4',
+                    femaleColor: '#ff7f0e',
+                    legendItems: [
+                        { label: 'Male', color: '#1f77b4' },
+                        { label: 'Female', color: '#ff7f0e' }
+                    ]
+                });
+
+                cartogram.draw();
+            } catch (error) {
+                console.error('Error loading example:', error);
+                document.querySelector('.cartogram-container').innerHTML = `
+                    <div class="error-message">
+                        <h2>Error Loading Example</h2>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+            }
+        });
+    </script>
+</body>
+</html>

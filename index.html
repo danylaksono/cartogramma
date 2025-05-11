@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Cartogram Visualization</title>
+    <link rel="stylesheet" href="css/cartogram.css" />
+  </head>
+  <body>
+    <header>
+      <h1>Cartogram Visualization</h1>
+      <nav>
+        <ul>
+          <li><a href="examples/dashboard.html">Dashboard</a></li>
+          <li><a href="examples/education.html">Education Stats</a></li>
+          <li><a href="examples/pyramid_stats.html">Population Stats</a></li>
+          <li><a href="examples/waffle.html">Waffle Chart</a></li>
+          <li><a href="examples/pyramid.html">Population Pyramid</a></li>
+          <li><a href="examples/pie.html">Pie Chart</a></li>
+        </ul>
+      </nav>
+    </header>
+
+    <main>
+      <div class="cartogram-container">
+        <button class="export-button">Export as PNG</button>
+        <svg class="cartogram-svg"></svg>
+        <div class="tooltip"></div>
+      </div>
+    </main>
+
+    <footer>
+      <p>Cartogram Visualization Library &copy; 2025</p>
+    </footer>
+
+    <script type="module" src="src/index.js"></script>
+  </body>
+</html>

@@ -1,0 +1,199 @@
+/* Main Cartogram styles */
+body {
+    font-family: 'Roboto', Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    background: #f5f5f5;
+    color: #333;
+    line-height: 1.6;
+}
+
+/* Layout */
+header {
+    background: linear-gradient(to right, #2c3e50, #3498db);
+    color: white;
+    padding: 1rem 2rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+header h1 {
+    margin: 0;
+    font-size: 2rem;
+}
+
+nav ul {
+    display: flex;
+    list-style: none;
+    padding: 0;
+    margin: 1rem 0 0;
+}
+
+nav li {
+    margin-right: 1.5rem;
+}
+
+nav a {
+    color: white;
+    text-decoration: none;
+    padding: 0.5rem 0;
+    font-weight: 500;
+    border-bottom: 2px solid transparent;
+    transition: border-color 0.3s;
+}
+
+nav a:hover {
+    border-color: white;
+}
+
+main {
+    max-width: 1200px;
+    margin: 2rem auto;
+    padding: 0 1rem;
+}
+
+footer {
+    background: #2c3e50;
+    color: white;
+    text-align: center;
+    padding: 1rem;
+    margin-top: 2rem;
+}
+
+/* Cartogram container */
+.cartogram-container {
+    position: relative;
+    margin: 0 auto;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.cartogram-svg {
+    width: 100%;
+    height: auto;
+    background: linear-gradient(to bottom, #e6e9f0, #d8deeb);
+    border-radius: 8px;
+    display: block;
+}
+
+/* Grid cells */
+.grid-cell {
+    fill: #dfe4ea;
+    stroke: #333;
+    stroke-width: 1;
+    transition: fill 0.2s ease;
+}
+
+.grid-cell:hover, .grid-cell.selected {
+    fill: #ffd700;
+}
+
+.grid-label {
+    fill: #333;
+    font-size: 12px;
+    pointer-events: none;
+}
+
+/* Legend */
+.legend rect {
+    stroke: #333;
+    stroke-width: 0.5;
+    cursor: pointer;
+    transition: opacity 0.2s ease;
+}
+
+.legend rect.disabled {
+    opacity: 0.3;
+}
+
+.legend text {
+    fill: #333;
+    font-size: 12px;
+}
+
+.legend-group {
+    fill: none;
+    pointer-events: all;
+}
+
+/* Tooltip */
+.tooltip {
+    position: absolute;
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 8px 12px;
+    border-radius: 4px;
+    pointer-events: none;
+    font-size: 12px;
+    display: none;
+    z-index: 100;
+    max-width: 200px;
+}
+
+/* Waffle Chart */
+.waffle-cell {
+    stroke: #fff;
+    stroke-width: 0.5;
+    transition: opacity 0.2s;
+}
+
+/* Error message */
+.error-message {
+    fill: #d32f2f;
+    font-size: 14px;
+    text-anchor: middle;
+}
+
+.export-button {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    padding: 8px 16px;
+    background: #1976d2;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background 0.2s;
+    z-index: 10;
+}
+
+.export-button:hover {
+    background: #1565c0;
+}
+
+/* Animation */
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.fade-in {
+    animation: fadeIn 0.5s ease-in-out;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    header {
+        padding: 1rem;
+    }
+    
+    header h1 {
+        font-size: 1.5rem;
+    }
+    
+    nav ul {
+        flex-direction: column;
+    }
+    
+    nav li {
+        margin-right: 0;
+        margin-bottom: 0.5rem;
+    }
+    
+    .export-button {
+        font-size: 12px;
+        padding: 6px 12px;
+    }
+}

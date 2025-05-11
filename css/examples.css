@@ -1,0 +1,71 @@
+/* Example page specific styles */
+.example-description {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 8px;
+    margin-bottom: 2rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.example-description h2 {
+    margin-top: 0;
+    color: #2c3e50;
+    font-size: 1.8rem;
+}
+
+.example-description p {
+    line-height: 1.6;
+    color: #555;
+}
+
+/* Controls for examples */
+.visualization-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    background: white;
+    padding: 1rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.control-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.control-group label {
+    font-weight: bold;
+    margin-bottom: 0.25rem;
+    color: #333;
+}
+
+.control-group select, 
+.control-group input, 
+.control-group button {
+    padding: 0.5rem;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+    background: white;
+    min-width: 120px;
+}
+
+.control-group button {
+    background: #1976d2;
+    color: white;
+    cursor: pointer;
+    border: none;
+    transition: background 0.2s;
+}
+
+.control-group button:hover {
+    background: #1565c0;
+}
+
+/* Responsive tweaks */
+@media (max-width: 768px) {
+    .visualization-controls {
+        flex-direction: column;
+    }
+}

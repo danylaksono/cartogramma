@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Population Statistics | Cartogram Visualization</title>
+    <link rel="stylesheet" href="../css/cartogram.css" />
+    <link rel="stylesheet" href="../css/examples.css" />
+  </head>
+  <body>
+    <header>
+      <h1>Indonesia Population Statistics</h1>
+      <nav>
+        <ul>
+          <li><a href="../index.html">Home</a></li>
+          <li><a href="dashboard.html">Dashboard</a></li>
+          <li><a href="education.html">Education Stats</a></li>
+          <li><a href="waffle.html">Waffle Chart</a></li>
+          <li><a href="pie.html">Pie Chart</a></li>
+        </ul>
+      </nav>
+    </header>
+
+    <main>
+      <div class="example-description">
+        <h2>Population Pyramid Visualization</h2>
+        <p>
+          This example demonstrates the cartogram with enhanced population
+          pyramids for each region. The population pyramid shows the male (left)
+          and female (right) distribution in each province of Indonesia with
+          improved error handling and visualization.
+        </p>
+      </div>
+
+      <div class="cartogram-container">
+        <button class="export-button">Export as PNG</button>
+        <svg class="cartogram-svg"></svg>
+        <div class="tooltip"></div>
+      </div>
+    </main>
+
+    <footer>
+      <p>Cartogram Visualization Library &copy; 2025</p>
+    </footer>
+
+    <script type="module">
+      import { Cartogram } from "../src/cartogram.js";
+      import { drawPopulationPyramid } from "../src/glyphs/pyramid.js";
+      import { loadCSV } from "../src/utils/data-loader.js";
+
+      document.addEventListener("DOMContentLoaded", async () => {
+        try {
+          const gridData = await loadCSV("../data/indonesia-grid.csv");
+          const chartData = await loadCSV(
+            "../data/indonesia-population-updated.csv"
+          );
+
+          const cartogram = new Cartogram({
+            containerSelector: ".cartogram-container",
+            width: 1200,
+            height: 1000,
+            labelPosition: "top",
+            showLegend: true,
+            legendPosition: "top-right",
+            gridLabelColumn: "Provinsi",
+            chartLabelColumn: "Provinsi",
+            animationDuration: 500,
+            preprocessOptions: {
+              // Add derived columns to show total population in tooltip
+              custom: (data) => {
+                return data.map((d) => {
+                  const male = parseInt(d.Male) || 0;
+                  const female = parseInt(d.Female) || 0;
+                  return {
+                    ...d,
+                    "Male Population": male.toLocaleString(),
+                    "Female Population": female.toLocaleString(),
+                    "Total Population": parseInt(d.Population).toLocaleString(),
+                  };
+                });
+              },
+            },
+          });
+
+          await cartogram.loadGridData(gridData);
+          await cartogram.loadChartData(chartData);
+          cartogram.setCustomGlyphFunction(drawPopulationPyramid, {
+            maleColor: "#3366cc",
+            femaleColor: "#dc3545",
+            maleColumn: "Male",
+            femaleColumn: "Female",
+            showLabels: true,
+            legendItems: [
+              { label: "Male", color: "#3366cc" },
+              { label: "Female", color: "#dc3545" },
+            ],
+          });
+
+          cartogram.draw();
+        } catch (error) {
+          console.error("Error loading example:", error);
+          document.querySelector(".cartogram-container").innerHTML = `
+                    <div class="error-message">
+                        <h2>Error Loading Example</h2>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+        }
+      });
+    </script>
+  </body>
+</html>

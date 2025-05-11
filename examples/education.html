@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Education Statistics | Cartogram Visualization</title>
+    <link rel="stylesheet" href="../css/cartogram.css" />
+    <link rel="stylesheet" href="../css/examples.css" />
+    <style>
+      .tab-container {
+        margin-bottom: 20px;
+      }
+      .tab-buttons {
+        display: flex;
+        justify-content: center;
+        gap: 10px;
+        margin-bottom: 15px;
+      }
+      .tab-button {
+        padding: 8px 16px;
+        border: 1px solid #ddd;
+        background-color: #f5f5f5;
+        cursor: pointer;
+        border-radius: 4px;
+        font-weight: bold;
+      }
+      .tab-button.active {
+        background-color: #3498db;
+        color: white;
+        border-color: #2980b9;
+      }
+      .tab-content {
+        display: none;
+      }
+      .tab-content.active {
+        display: block;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Indonesia Education Statistics</h1>
+      <nav>
+        <ul>
+          <li><a href="../index.html">Home</a></li>
+          <li><a href="dashboard.html">Dashboard</a></li>
+          <li><a href="pyramid_stats.html">Population</a></li>
+        </ul>
+      </nav>
+    </header>
+
+    <main>
+      <div class="example-description">
+        <h2>Education Statistics Visualization</h2>
+        <p>
+          This example demonstrates the cartogram with educational metrics for
+          Indonesia's provinces. The data includes literacy rates and higher
+          education statistics.
+        </p>
+      </div>
+
+      <div class="tab-container">
+        <div class="tab-buttons">
+          <button class="tab-button active" data-tab="literacy">
+            Literacy Rates
+          </button>
+          <button class="tab-button" data-tab="gender">Gender Disparity</button>
+          <button class="tab-button" data-tab="higher-ed">
+            Higher Education
+          </button>
+        </div>
+      </div>
+
+      <div class="tab-content active" id="literacy">
+        <div class="literacy-container cartogram-container">
+          <button class="export-button">Export as PNG</button>
+          <svg class="cartogram-svg"></svg>
+          <div class="tooltip"></div>
+        </div>
+      </div>
+
+      <div class="tab-content" id="gender">
+        <div class="gender-container cartogram-container">
+          <button class="export-button">Export as PNG</button>
+          <svg class="cartogram-svg"></svg>
+          <div class="tooltip"></div>
+        </div>
+      </div>
+
+      <div class="tab-content" id="higher-ed">
+        <div class="higher-ed-container cartogram-container">
+          <button class="export-button">Export as PNG</button>
+          <svg class="cartogram-svg"></svg>
+          <div class="tooltip"></div>
+        </div>
+      </div>
+    </main>
+
+    <footer>
+      <p>Cartogram Visualization Library &copy; 2025</p>
+    </footer>
+
+    <script type="module">
+      import { Cartogram } from "../src/cartogram.js";
+      import { drawBarChart } from "../src/glyphs/bar.js";
+      import { drawSplitBarChart } from "../src/glyphs/split-bar.js";
+      import { loadCSV } from "../src/utils/data-loader.js";
+
+      // Tab switching logic
+      document.querySelectorAll(".tab-button").forEach((button) => {
+        button.addEventListener("click", () => {
+          // Update active button
+          document.querySelectorAll(".tab-button").forEach((btn) => {
+            btn.classList.remove("active");
+          });
+          button.classList.add("active");
+
+          // Update active content
+          document.querySelectorAll(".tab-content").forEach((tab) => {
+            tab.classList.remove("active");
+          });
+          document.getElementById(button.dataset.tab).classList.add("active");
+        });
+      });
+
+      document.addEventListener("DOMContentLoaded", async () => {
+        try {
+          // Load shared data
+          const gridData = await loadCSV("../data/indonesia-grid.csv");
+          const educationData = await loadCSV(
+            "../data/indonesia-education.csv"
+          );
+          const populationData = await loadCSV(
+            "../data/indonesia-population-updated.csv"
+          );
+
+          // Merge education and population data for complete visualization
+          const mergedData = educationData.map((educItem) => {
+            const popItem = populationData.find(
+              (p) => p.Provinsi === educItem.Provinsi
+            );
+            return {
+              ...educItem,
+              Population: popItem?.Population || 0,
+            };
+          });
+
+          // Create literacy rate cartogram (bar chart)
+          const literacyCartogram = new Cartogram({
+            containerSelector: ".literacy-container",
+            width: 1200,
+            height: 1000,
+            labelPosition: "bottom",
+            showLegend: true,
+            legendPosition: "top-right",
+            gridLabelColumn: "Provinsi",
+            chartLabelColumn: "Provinsi",
+            animationDuration: 500,
+          });
+
+          await literacyCartogram.loadGridData(gridData);
+          await literacyCartogram.loadChartData(mergedData);
+
+          literacyCartogram.setCustomGlyphFunction(drawBarChart, {
+            metrics: ["LiteracyRate"],
+            colors: ["#3498db"],
+            titles: ["Literacy Rate"],
+            maxValue: 100,
+            legendItems: [{ label: "Literacy Rate", color: "#3498db" }],
+          });
+
+          literacyCartogram.draw();
+
+          // Create gender disparity cartogram (split bar)
+          const genderCartogram = new Cartogram({
+            containerSelector: ".gender-container",
+            width: 1200,
+            height: 1000,
+            labelPosition: "bottom",
+            showLegend: true,
+            legendPosition: "top-right",
+            gridLabelColumn: "Provinsi",
+            chartLabelColumn: "Provinsi",
+            animationDuration: 500,
+          });
+
+          await genderCartogram.loadGridData(gridData);
+          await genderCartogram.loadChartData(mergedData);
+
+          genderCartogram.setCustomGlyphFunction(drawSplitBarChart, {
+            leftMetric: "MaleLiteracy",
+            rightMetric: "FemaleLiteracy",
+            leftColor: "#3366cc",
+            rightColor: "#dc3545",
+            leftLabel: "Male Literacy",
+            rightLabel: "Female Literacy",
+            legendItems: [
+              { label: "Male Literacy", color: "#3366cc" },
+              { label: "Female Literacy", color: "#dc3545" },
+            ],
+          });
+
+          genderCartogram.draw();
+
+          // Create higher education cartogram (bar chart)
+          const higherEdCartogram = new Cartogram({
+            containerSelector: ".higher-ed-container",
+            width: 1200,
+            height: 1000,
+            labelPosition: "bottom",
+            showLegend: true,
+            legendPosition: "top-right",
+            gridLabelColumn: "Provinsi",
+            chartLabelColumn: "Provinsi",
+            animationDuration: 500,
+          });
+
+          await higherEdCartogram.loadGridData(gridData);
+          await higherEdCartogram.loadChartData(mergedData);
+
+          higherEdCartogram.setCustomGlyphFunction(drawBarChart, {
+            metrics: ["HigherEd"],
+            colors: ["#2ecc71"],
+            titles: ["Higher Education"],
+            maxValue: 40, // Higher education percentages are lower, use a more appropriate scale
+            legendItems: [{ label: "Higher Education", color: "#2ecc71" }],
+          });
+
+          higherEdCartogram.draw();
+        } catch (error) {
+          console.error("Error loading education visualizations:", error);
+          document
+            .querySelectorAll(".cartogram-container")
+            .forEach((container) => {
+              container.innerHTML = `
+                        <div class="error-message">
+                            <h2>Error Loading Visualization</h2>
+                            <p>${error.message}</p>
+                        </div>
+                    `;
+            });
+        }
+      });
+    </script>
+  </body>
+</html>
