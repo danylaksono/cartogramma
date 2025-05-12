@@ -53,7 +53,8 @@
 
           const cartogram = new Cartogram({
             containerSelector: ".cartogram-container",
-            labelPosition: "above", // Place label below the cell for better readability
+            labelPosition: "outside-top", // Place label below the cell for better readability
+            labelDistance: 0,
             showLegend: true,
             legendPosition: "top-right",
             gridLabelColumn: "Initials",

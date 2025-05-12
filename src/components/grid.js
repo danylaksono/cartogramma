@@ -50,19 +50,29 @@ export function renderGridCells(
     gridPadding = 4,
     borderRadius = 4,
     labelFontSize = 12,
-    labelPosition = "top",
+    labelPosition = "top", // "top", "bottom", "left", "right", "center", "outside-top", "outside-bottom", "outside-left", "outside-right"
+    labelMask = false,
+    labelMaskColor = "#fff",
+    labelMaskOpacity = 0.7,
+    labelDistance = null, // new option: distance between grid and label (null = auto)
     gridFill = "#dfe4ea",
     hoverFill = "#ffd700",
     borderColor = "#333",
     selectedGrid = null,
   } = options || {};
 
-  // Calculate extra vertical space for labels (top/bottom)
+  // Calculate extra vertical space for labels (top/bottom/outside)
   let labelExtraSpace = 0;
   let effectiveLabelFontSize = labelFontSize;
-  if (labelPosition === "bottom" || labelPosition === "top") {
-    effectiveLabelFontSize = Math.min(10, labelFontSize || 12, gridSize * 0.25); // Make label small and fit
-    labelExtraSpace = Math.ceil(effectiveLabelFontSize * 1.3); // 1.3x font size for label space
+  // Defensive: ensure font size is positive and reasonable
+  if (!Number.isFinite(effectiveLabelFontSize) || effectiveLabelFontSize <= 0)
+    effectiveLabelFontSize = 12;
+  // Add extra space for outside labels
+  if (
+    ["bottom", "top", "outside-top", "outside-bottom"].includes(labelPosition)
+  ) {
+    effectiveLabelFontSize = Math.min(10, labelFontSize || 12, gridSize * 0.25);
+    labelExtraSpace = Math.ceil(effectiveLabelFontSize * 1.3);
   }
 
   // Create grid groups with error handling
@@ -130,55 +140,127 @@ export function renderGridCells(
       try {
         const selection = d3.select(nodes[i]);
         const safeGridSize = Math.max(10, gridSize);
-        let x, y, anchor, baseline;
-        let maxWidth;
-        switch (labelPosition) {
+        let x = safeGridSize / 2,
+          y = safeGridSize / 2,
+          anchor = "middle",
+          baseline = "middle",
+          maxWidth = safeGridSize * 0.9;
+        // Defensive: ensure labelPosition is a string
+        const pos = typeof labelPosition === "string" ? labelPosition : "top";
+        // Smart offset calculation for outside/edge labels
+        // Use gridPadding and font size to keep label close but not overlapping
+        // Allow user to override with labelDistance
+        const labelPad =
+          labelDistance !== null && Number.isFinite(labelDistance)
+            ? labelDistance
+            : Math.max(2, gridPadding * 0.5); // minimal gap
+        const labelBoxH = effectiveLabelFontSize * 1.1;
+        // For outside positions, if labelDistance is set (including 0), use it as the gap from the grid edge. If not, use gridPadding.
+        switch (pos) {
           case "top":
             x = safeGridSize / 2;
-            y = -labelExtraSpace + Math.ceil(effectiveLabelFontSize * 0.9); // above cell
+            y = -labelPad;
             anchor = "middle";
             baseline = "alphabetic";
             maxWidth = safeGridSize * 1.5;
             break;
           case "bottom":
             x = safeGridSize / 2;
-            y = safeGridSize + Math.ceil(effectiveLabelFontSize * 1.1); // below cell
+            y = safeGridSize + labelBoxH + labelPad - 2;
             anchor = "middle";
             baseline = "hanging";
             maxWidth = safeGridSize * 1.5;
             break;
           case "left":
-            x = -6;
+            x = -labelPad;
             y = safeGridSize / 2;
             anchor = "end";
             baseline = "middle";
             maxWidth = safeGridSize * 1.5;
             break;
           case "right":
-            x = safeGridSize + 6;
+            x = safeGridSize + labelPad;
             y = safeGridSize / 2;
             anchor = "start";
             baseline = "middle";
             maxWidth = safeGridSize * 1.5;
             break;
           case "center":
-          default:
             x = safeGridSize / 2;
             y = safeGridSize / 2;
             anchor = "middle";
             baseline = "middle";
             maxWidth = safeGridSize * 0.9;
             break;
+          case "outside-top":
+            x = safeGridSize / 2;
+            y = -(labelDistance !== null && Number.isFinite(labelDistance)
+              ? labelDistance
+              : gridPadding);
+            anchor = "middle";
+            baseline = "alphabetic";
+            maxWidth = safeGridSize * 1.5;
+            break;
+          case "outside-bottom":
+            x = safeGridSize / 2;
+            y =
+              safeGridSize +
+              (labelDistance !== null && Number.isFinite(labelDistance)
+                ? labelDistance
+                : gridPadding);
+            anchor = "middle";
+            baseline = "hanging";
+            maxWidth = safeGridSize * 1.5;
+            break;
+          case "outside-left":
+            x = -(labelDistance !== null && Number.isFinite(labelDistance)
+              ? labelDistance
+              : gridPadding);
+            y = safeGridSize / 2;
+            anchor = "end";
+            baseline = "middle";
+            maxWidth = safeGridSize * 1.5;
+            break;
+          case "outside-right":
+            x =
+              safeGridSize +
+              (labelDistance !== null && Number.isFinite(labelDistance)
+                ? labelDistance
+                : gridPadding);
+            y = safeGridSize / 2;
+            anchor = "start";
+            baseline = "middle";
+            maxWidth = safeGridSize * 1.5;
+            break;
+          default:
+            x = safeGridSize / 2;
+            y = -labelPad;
+            anchor = "middle";
+            baseline = "alphabetic";
+            maxWidth = safeGridSize * 1.5;
         }
-        let label = d.label ? String(d.label) : "";
+        let label = d && d.label ? String(d.label) : "";
         let displayLabel = label;
-        // Truncate if too long
+        // Defensive: ensure label is string and not too long
         const estWidth = estimateTextWidth(label, effectiveLabelFontSize);
         if (estWidth > maxWidth) {
           let chars = Math.floor((maxWidth / estWidth) * label.length) - 2;
           if (chars < 4) chars = 4;
           displayLabel = label.slice(0, chars) + "…";
         }
+        // Optional masking (background rect for label)
+        if (labelMask && displayLabel) {
+          selection
+            .append("rect")
+            .attr("class", "grid-label-mask")
+            .attr("x", x - maxWidth / 2)
+            .attr("y", y - effectiveLabelFontSize * 0.8)
+            .attr("width", maxWidth)
+            .attr("height", effectiveLabelFontSize * 1.3)
+            .attr("fill", labelMaskColor)
+            .attr("opacity", labelMaskOpacity);
+        }
+        // Draw label
         const text = selection
           .append("text")
           .attr("class", "grid-label")
@@ -195,7 +277,12 @@ export function renderGridCells(
             }
           });
       } catch (error) {
-        console.error(`Error rendering label for grid cell: ${error.message}`);
+        // Defensive: log error but do not break rendering
+        console.error(
+          `Error rendering label for grid cell: ${
+            error && error.message ? error.message : error
+          }`
+        );
       }
     });
 

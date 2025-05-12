@@ -102,12 +102,12 @@ footer {
   stroke-width: 1.5;
 }
 
-.grid-label {
+/* .grid-label {
   fill: #495057;
   font-size: 12px;
   font-weight: 500;
   pointer-events: none;
-}
+} */
 
 /* Legend */
 .legend rect {

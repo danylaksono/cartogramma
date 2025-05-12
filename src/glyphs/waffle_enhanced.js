@@ -259,7 +259,7 @@ function drawSingleMetricWaffle(selection, bounds, data, options) {
       .append("text")
       .attr("class", "waffle-label")
       .attr("x", x + width / 2)
-      .attr("y", y + height - gridCount * cellSize - 4) // Position above the grid
+      .attr("y", y) // Position above the grid
       .attr("text-anchor", "middle")
       .attr("font-size", 10)
       .attr("fill", "#333")
