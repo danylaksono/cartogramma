@@ -99,7 +99,7 @@
           // Load shared data
           const gridData = await loadCSV("../data/indonesia-grid.csv");
           const populationData = await loadCSV(
-            "../data/indonesia-population-updated.csv"
+            "../data/indonesia-population.csv"
           );
 
           // Create waffle chart cartogram
@@ -110,8 +110,8 @@
             labelPosition: "bottom",
             showLegend: true,
             legendPosition: "top-right",
-            gridLabelColumn: "Provinsi",
-            chartLabelColumn: "Provinsi",
+            gridLabelColumn: "Initials",
+            chartLabelColumn: "Initials", // Use Initials to match grid cells
             animationDuration: 500,
             preprocessOptions: {}, // No normalization
           });
@@ -139,8 +139,8 @@
             labelPosition: "bottom",
             showLegend: true,
             legendPosition: "top-right",
-            gridLabelColumn: "Provinsi",
-            chartLabelColumn: "Provinsi",
+            gridLabelColumn: "Initials",
+            chartLabelColumn: "Initials", // Changed from "Provinsi" to "Initials" to fix matching
             animationDuration: 500,
             preprocessOptions: {}, // No normalization
           });
@@ -167,8 +167,8 @@
             labelPosition: "bottom",
             showLegend: true,
             legendPosition: "top-right",
-            gridLabelColumn: "Provinsi",
-            chartLabelColumn: "Provinsi",
+            gridLabelColumn: "Initials",
+            chartLabelColumn: "Initials", // Changed from "Provinsi" to "Initials" to fix matching
             animationDuration: 500,
             preprocessOptions: {}, // No normalization
           });

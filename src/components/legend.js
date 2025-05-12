@@ -23,6 +23,19 @@ export function createLegend(svg, items, options, clickHandler) {
     return d3.select(null); // Return empty selection
   }
 
+  // Ensure every legend item has a label (fallback to color or index if missing)
+  items.forEach((item, idx) => {
+    if (!item.label || item.label === "") {
+      if (item.value) {
+        item.label = String(item.value);
+      } else if (item.color) {
+        item.label = String(item.color);
+      } else {
+        item.label = `Item ${idx + 1}`;
+      }
+    }
+  });
+
   // Apply default options if missing
   const {
     position = "top-right",
@@ -72,7 +85,9 @@ export function createLegend(svg, items, options, clickHandler) {
       .append("rect")
       .attr("width", legendWidth)
       .attr("height", legendHeight)
-      .attr("fill", "rgba(255, 255, 255, 0.8)")
+      .attr("fill", "rgba(255, 255, 255, 0.95)") // Increased opacity from 0.8 to 0.95
+      .attr("stroke", "#333") // Added border
+      .attr("stroke-width", 1) // Added border width
       .attr("rx", 4)
       .attr("ry", 4);
 

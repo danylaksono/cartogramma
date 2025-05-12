@@ -122,7 +122,7 @@ footer {
 }
 
 .legend text {
-  fill: #495057;
+  fill: #000000; /* Changed from #495057 to black for better visibility */
   font-size: 12px;
   font-weight: 500;
 }

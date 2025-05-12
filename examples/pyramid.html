@@ -48,17 +48,15 @@
       document.addEventListener("DOMContentLoaded", async () => {
         try {
           const gridData = await loadCSV("../data/indonesia-grid.csv");
-          const chartData = await loadCSV(
-            "../data/indonesia-population-updated.csv"
-          );
+          const chartData = await loadCSV("../data/indonesia-population.csv");
 
           const cartogram = new Cartogram({
             containerSelector: ".cartogram-container",
-            labelPosition: "top",
+            labelPosition: "bottom", // Place label below the cell for better readability
             showLegend: true,
             legendPosition: "top-right",
-            gridLabelColumn: "Provinsi",
-            chartLabelColumn: "Provinsi",
+            gridLabelColumn: "Initials",
+            chartLabelColumn: "Initials", // Changed from "Provinsi" to "Initials" to fix matching
             animationDuration: 500,
           });
 

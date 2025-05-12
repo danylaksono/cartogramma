@@ -57,6 +57,14 @@ export function renderGridCells(
     selectedGrid = null,
   } = options || {};
 
+  // Calculate extra vertical space for labels (top/bottom)
+  let labelExtraSpace = 0;
+  let effectiveLabelFontSize = labelFontSize;
+  if (labelPosition === "bottom" || labelPosition === "top") {
+    effectiveLabelFontSize = Math.min(10, labelFontSize || 12, gridSize * 0.25); // Make label small and fit
+    labelExtraSpace = Math.ceil(effectiveLabelFontSize * 1.3); // 1.3x font size for label space
+  }
+
   // Create grid groups with error handling
   try {
     const gridGroups = svg
@@ -70,7 +78,9 @@ export function renderGridCells(
         const row = d.row && !isNaN(d.row) ? d.row : 1;
         const col = d.col && !isNaN(d.col) ? d.col : 1;
         const x = margin.left + (col - 1) * (gridSize + gridPadding);
-        const y = margin.top + (row - 1) * (gridSize + gridPadding);
+        // Add extra vertical space between rows for top/bottom labels
+        const y =
+          margin.top + (row - 1) * (gridSize + gridPadding + labelExtraSpace);
         return `translate(${x}, ${y})`;
       })
       .attr("tabindex", 0)
@@ -115,112 +125,75 @@ export function renderGridCells(
       })
       .attr("stroke", borderColor || "#333");
 
-    // Draw labels with wrapping, with error handling
+    // Draw labels with improved positioning, truncation, and unobtrusive font size
     gridGroups.each((d, i, nodes) => {
       try {
         const selection = d3.select(nodes[i]);
-        // Use a safe grid size
         const safeGridSize = Math.max(10, gridSize);
-        const maxWidth =
-          labelPosition === "left" || labelPosition === "right"
-            ? safeGridSize * 1.5
-            : safeGridSize;
-
-        // Ensure label is a string
-        const label = d.label ? String(d.label) : "";
-        const words = label.split(" ");
-        let line = [];
-        let lines = [];
-
-        // Process words to create wrapped lines
-        words.forEach((word) => {
-          line.push(word);
-          const testLine = line.join(" ");
-          const testWidth = estimateTextWidth(testLine, labelFontSize || 12);
-
-          if (testWidth > maxWidth && line.length > 1) {
-            lines.push(line.slice(0, -1).join(" "));
-            line = [word];
-          }
-        });
-
-        if (line.length) lines.push(line.join(" ")); // Create text element
+        let x, y, anchor, baseline;
+        let maxWidth;
+        switch (labelPosition) {
+          case "top":
+            x = safeGridSize / 2;
+            y = -labelExtraSpace + Math.ceil(effectiveLabelFontSize * 0.9); // above cell
+            anchor = "middle";
+            baseline = "alphabetic";
+            maxWidth = safeGridSize * 1.5;
+            break;
+          case "bottom":
+            x = safeGridSize / 2;
+            y = safeGridSize + Math.ceil(effectiveLabelFontSize * 1.1); // below cell
+            anchor = "middle";
+            baseline = "hanging";
+            maxWidth = safeGridSize * 1.5;
+            break;
+          case "left":
+            x = -6;
+            y = safeGridSize / 2;
+            anchor = "end";
+            baseline = "middle";
+            maxWidth = safeGridSize * 1.5;
+            break;
+          case "right":
+            x = safeGridSize + 6;
+            y = safeGridSize / 2;
+            anchor = "start";
+            baseline = "middle";
+            maxWidth = safeGridSize * 1.5;
+            break;
+          case "center":
+          default:
+            x = safeGridSize / 2;
+            y = safeGridSize / 2;
+            anchor = "middle";
+            baseline = "middle";
+            maxWidth = safeGridSize * 0.9;
+            break;
+        }
+        let label = d.label ? String(d.label) : "";
+        let displayLabel = label;
+        // Truncate if too long
+        const estWidth = estimateTextWidth(label, effectiveLabelFontSize);
+        if (estWidth > maxWidth) {
+          let chars = Math.floor((maxWidth / estWidth) * label.length) - 2;
+          if (chars < 4) chars = 4;
+          displayLabel = label.slice(0, chars) + "…";
+        }
         const text = selection
           .append("text")
           .attr("class", "grid-label")
-          .attr("x", safeGridSize / 2)
-          .attr(
-            "y",
-            (() => {
-              switch (labelPosition) {
-                case "top":
-                  return -10;
-                case "bottom":
-                  return safeGridSize + 20;
-                case "left":
-                  return -10;
-                case "right":
-                  return safeGridSize + 10;
-                default:
-                  return safeGridSize / 2; // center
-              }
-            })()
-          )
-          .attr(
-            "text-anchor",
-            (() => {
-              switch (labelPosition) {
-                case "left":
-                  return "end";
-                case "right":
-                  return "start";
-                default:
-                  return "middle";
-              }
-            })()
-          )
-          .attr("font-size", labelFontSize || 12);
-
-        // Add tspan for each line
-        lines.forEach((line, i) => {
-          text
-            .append("tspan")
-            .attr("x", safeGridSize / 2)
-            .attr(
-              "dy",
-              i === 0 && labelPosition !== "center"
-                ? 0
-                : (labelFontSize || 12) * 1.2
-            )
-            .attr(
-              "text-anchor",
-              (() => {
-                switch (labelPosition) {
-                  case "left":
-                    return "end";
-                  case "right":
-                    return "start";
-                  default:
-                    return "middle";
-                }
-              })()
-            )
-            .text(line);
-        });
-
-        // Position text properly for center labels
-        if (labelPosition === "center") {
-          try {
-            const bbox = text.node().getBBox();
-            text.attr(
-              "y",
-              safeGridSize / 2 - bbox.height / 2 + (labelFontSize || 12) / 2
-            );
-          } catch (e) {
-            // Fallback if getBBox fails
-            text.attr("y", safeGridSize / 2);
-          }
-        }
+          .attr("x", x)
+          .attr("y", y)
+          .attr("text-anchor", anchor)
+          .attr("dominant-baseline", baseline)
+          .attr("font-size", effectiveLabelFontSize)
+          .text(displayLabel)
+          .style("cursor", estWidth > maxWidth ? "pointer" : null)
+          .on("mouseover", function () {
+            if (estWidth > maxWidth) {
+              d3.select(this).append("title").text(label);
+            }
+          });
       } catch (error) {
         console.error(`Error rendering label for grid cell: ${error.message}`);
       }

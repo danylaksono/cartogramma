@@ -131,7 +131,7 @@
             "../data/indonesia-education.csv"
           );
           const populationDataCSV = await loadCSV(
-            "../data/indonesia-population-updated.csv"
+            "../data/indonesia-population.csv"
           );
 
           const gridData = parseCSV(gridDataCSV);
@@ -157,8 +157,8 @@
             labelPosition: "bottom",
             showLegend: true,
             legendPosition: "top-right",
-            gridLabelColumn: "Provinsi",
-            chartLabelColumn: "Provinsi",
+            gridLabelColumn: "Initials",
+            chartLabelColumn: "Initials", // Changed from "Provinsi" to "Initials" to fix matching
             animationDuration: 500,
           });
 
@@ -183,8 +183,8 @@
             labelPosition: "bottom",
             showLegend: true,
             legendPosition: "top-right",
-            gridLabelColumn: "Provinsi",
-            chartLabelColumn: "Provinsi",
+            gridLabelColumn: "Initials",
+            chartLabelColumn: "Initials", // Changed from "Provinsi" to "Initials" to fix matching
             animationDuration: 500,
           });
 
@@ -214,8 +214,8 @@
             labelPosition: "bottom",
             showLegend: true,
             legendPosition: "top-right",
-            gridLabelColumn: "Provinsi",
-            chartLabelColumn: "Provinsi",
+            gridLabelColumn: "Initials",
+            chartLabelColumn: "Initials", // Changed from "Provinsi" to "Initials" to fix matching
             animationDuration: 500,
           });
 

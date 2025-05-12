@@ -151,9 +151,16 @@ export class Cartogram {
       this.maxRow = Math.max(...this.gridData.map((d) => d.row), 1);
       this.maxCol = Math.max(...this.gridData.map((d) => d.col), 1);
 
-      // Calculate grid size
+      // Calculate grid size, reserving extra space for top/bottom labels
       const plotWidth = this.width - this.margin.left - this.margin.right;
-      const plotHeight = this.height - this.margin.top - this.margin.bottom;
+      let plotHeight = this.height - this.margin.top - this.margin.bottom;
+      let labelExtraSpace = 0;
+      if (this.labelPosition === "bottom" || this.labelPosition === "top") {
+        // Use a small font for unobtrusive labels, matching grid.js logic
+        const effectiveLabelFontSize = Math.min(10, this.labelFontSize || 12);
+        labelExtraSpace = Math.ceil(effectiveLabelFontSize * 1.3);
+        plotHeight -= (this.maxRow - 1) * labelExtraSpace;
+      }
       this.gridSize =
         Math.min(plotWidth / this.maxCol, plotHeight / this.maxRow) -
         this.gridPadding;
@@ -387,13 +394,15 @@ export class Cartogram {
       });
     }
 
-    // Draw legend
+    // Draw legend (remove previous legend first)
     if (
       this.showLegend &&
       this.customGlyphFunction &&
       this.customGlyphConfig &&
       this.customGlyphConfig.legendItems
     ) {
+      // Remove previous legend group if exists
+      this.svg.selectAll(".legend-group").remove();
       createLegend(
         this.svg,
         this.customGlyphConfig.legendItems,
