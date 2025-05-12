@@ -253,14 +253,13 @@ function drawSingleMetricWaffle(selection, bounds, data, options) {
     .transition()
     .duration(animationDuration)
     .attr("opacity", 1);
-
   // Add label if enabled
   if (showLabel) {
     selection
       .append("text")
       .attr("class", "waffle-label")
       .attr("x", x + width / 2)
-      .attr("y", y + height + 12)
+      .attr("y", y + height - gridCount * cellSize - 4) // Position above the grid
       .attr("text-anchor", "middle")
       .attr("font-size", 10)
       .attr("fill", "#333")

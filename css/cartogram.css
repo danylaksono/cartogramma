@@ -122,13 +122,13 @@ footer {
 }
 
 .legend text {
-  fill: #000000; /* Changed from #495057 to black for better visibility */
+  fill: #000000;
   font-size: 12px;
   font-weight: 500;
 }
 
 .legend-group {
-  fill: none;
+  /* fill: none; */
   pointer-events: all;
 }
 

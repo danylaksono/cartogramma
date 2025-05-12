@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Pie Chart Example | Cartogram Visualization</title>
     <link rel="stylesheet" href="../css/cartogram.css" />
-    <link rel="stylesheet" href="../css/examples.css" />
+    <!-- <link rel="stylesheet" href="../css/examples.css" /> -->
   </head>
   <body class="single-view-page">
     <header>
@@ -54,6 +54,7 @@
             containerSelector: ".cartogram-container",
             labelPosition: "bottom", // Place label below the cell for better readability
             showLegend: true,
+            borderRadius: 4,
             legendPosition: "top-right",
             gridLabelColumn: "Initials",
             chartLabelColumn: "Initials", // Changed from "Provinsi" to "Initials" to fix matching
@@ -64,6 +65,7 @@
           await cartogram.loadChartData(chartData);
 
           cartogram.setCustomGlyphFunction(drawPieChart, {
+            gridCount: 10,
             maleColor: "#1f77b4",
             femaleColor: "#ff7f0e",
             legendItems: [

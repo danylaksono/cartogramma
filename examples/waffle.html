@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Waffle Chart Example | Cartogram Visualization</title>
     <link rel="stylesheet" href="../css/cartogram.css" />
-    <link rel="stylesheet" href="../css/examples.css" />
+    <!-- <link rel="stylesheet" href="../css/examples.css" /> -->
   </head>
   <body class="single-view-page">
     <header>
@@ -53,7 +53,7 @@
 
           const cartogram = new Cartogram({
             containerSelector: ".cartogram-container",
-            labelPosition: "bottom", // Place label below the cell for better readability
+            labelPosition: "above", // Place label below the cell for better readability
             showLegend: true,
             legendPosition: "top-right",
             gridLabelColumn: "Initials",
